@@ -210,6 +210,15 @@ class Hiera
         Backend.lookup("key", "default", {}, nil, nil).should == "answer"
       end
 
+      it "should return the default" do
+        Config.load({:yaml => {:datadir => "/tmp"}})
+        Config.load_backends
+
+        Backend::Yaml_backend.any_instance.expects(:lookup).with("key", {}, nil, nil).returns(nil)
+
+        Backend.lookup("key", {}, {}, nil, nil).should == {}
+      end
+
       it "should retain the datatypes as returned by the backend" do
         Config.load({:yaml => {:datadir => "/tmp"}})
         Config.load_backends
@@ -256,6 +265,17 @@ class Hiera
         Backend.expects(:constants).returns(["Yaml_backend", "Rspec_backend"]).twice
 
         Backend.lookup("key", "notfound", {"rspec" => "test"}, nil, :hash).should == thehash
+      end
+
+      it "should return {} from the default if not found in backends" do
+        backend = mock
+        backend.expects(:lookup).returns(nil)
+        Config.load({})
+        Config.instance_variable_set("@config", {:backends => ["yaml", "rspec"]})
+        Backend.instance_variable_set("@backends", {"rspec" => backend})
+        Backend.expects(:constants).returns(["Yaml_backend", "Rspec_backend"]).twice
+
+        Backend.lookup("bad_key", {}, {"rspec" => "test"}, nil, :hash).should == {}
       end
 
       it "should build a merged hash from all backends for hash searches" do
